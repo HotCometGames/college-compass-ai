@@ -4,6 +4,7 @@ import { AppData } from "@/lib/store";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import TagInput from "@/components/TagInput";
 
 interface Props {
   data: AppData;
