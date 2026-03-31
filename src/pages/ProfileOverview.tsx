@@ -13,6 +13,7 @@ import TagInput from "@/components/TagInput";
 interface Props {
   data: AppData;
   updateProfile: (p: Partial<AppData["profile"]>) => void;
+  onImportData?: (data: AppData) => void;
 }
 
 function computeReadiness(data: AppData) {
