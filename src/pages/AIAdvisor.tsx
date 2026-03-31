@@ -1,9 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Send, Bot, User, Sparkles, Lock } from "lucide-react";
+import { Send, Bot, User, Sparkles } from "lucide-react";
 import { AppData } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import ReactMarkdown from "react-markdown";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -14,56 +17,49 @@ interface Props {
   data: AppData;
 }
 
-function generateLocalAdvice(data: AppData, question: string): string {
+function buildProfileContext(data: AppData): string {
   const p = data.profile;
-  const q = question.toLowerCase();
+  const lines: string[] = [];
 
-  const parts: string[] = [];
+  lines.push(`## Student Profile`);
+  lines.push(`- Name: ${p.name || 'Not set'}`);
+  lines.push(`- Target School: ${p.targetSchool}`);
+  lines.push(`- GPA (Weighted): ${p.gpaWeighted || 'Not set'}`);
+  lines.push(`- GPA (Unweighted): ${p.gpaUnweighted || 'Not set'}`);
+  lines.push(`- SAT Score: ${p.satScore ?? 'Not taken'}`);
+  lines.push(`- ACT Score: ${p.actScore ?? 'Not taken'}`);
+  lines.push(`- AP Classes: ${p.apClasses.length > 0 ? p.apClasses.join(', ') : 'None listed'}`);
 
-  parts.push(`## Profile Analysis for ${p.name || 'Student'}\n`);
-
-  if (q.includes('improve') || q.includes('weak') || q.includes('gap') || q.includes('what should')) {
-    if (p.gpaUnweighted < 3.9 && p.gpaUnweighted > 0) parts.push("📚 **GPA**: Your unweighted GPA could be stronger. Focus on maintaining straight A's this semester — even small improvements matter for MIT.");
-    if (p.satScore && p.satScore < 1550) parts.push(`📝 **SAT**: Your score of ${p.satScore} is below MIT's median (~1550). Consider retaking with focused prep on your weakest sections.`);
-    if (p.actScore && p.actScore < 35) parts.push(`📝 **ACT**: Your score of ${p.actScore} could be stronger. MIT's median is around 35-36. Focused practice could help.`);
-    if (p.apClasses.length < 8) parts.push(`🔬 **Course Rigor**: ${p.apClasses.length} AP classes is a start, but competitive applicants often take 8-12. Consider adding more STEM APs.`);
-    if (data.projects.length < 3) parts.push("🏆 **Activities**: You need more substantial projects. MIT values depth over breadth — focus on 2-3 high-impact activities.");
-    if (data.essays.length === 0) parts.push("✍️ **Essays**: Start drafting essays early. MIT essays should showcase your authentic voice and intellectual curiosity.");
+  if (data.projects.length > 0) {
+    lines.push(`\n## Projects & Activities (${data.projects.length} total)`);
+    data.projects.forEach((proj, i) => {
+      lines.push(`\n### ${i + 1}. ${proj.title}`);
+      lines.push(`- Category: ${proj.category}`);
+      lines.push(`- Description: ${proj.description}`);
+      lines.push(`- Impact Level: ${proj.impactLevel}`);
+      lines.push(`- Awards: ${proj.awards.length > 0 ? proj.awards.join(', ') : 'None'}`);
+      lines.push(`- Metrics: ${proj.metrics || 'None'}`);
+      lines.push(`- Duration: ${proj.startDate} to ${proj.isOngoing ? 'Present' : proj.endDate}`);
+    });
+  } else {
+    lines.push(`\n## Projects & Activities: None added yet`);
   }
 
-  if (q.includes('competitive') || q.includes('chances') || q.includes('ready')) {
-    const highImpact = data.projects.filter(p => p.impactLevel === 'national' || p.impactLevel === 'international');
-    parts.push("### Competitiveness Assessment\n");
-    if (p.gpaUnweighted >= 3.9 && (p.satScore ?? 0) >= 1550) parts.push("✅ Your academics are competitive for MIT.");
-    else parts.push("⚠️ Your academic stats need improvement to be competitive.");
-    if (highImpact.length >= 2) parts.push("✅ You have strong high-impact activities.");
-    else parts.push("⚠️ You need more nationally/internationally recognized activities.");
-    parts.push("\nMIT's acceptance rate is ~4%. Strong academics are necessary but not sufficient — you need a compelling \"spike\" that shows deep passion.");
+  if (data.goals.length > 0) {
+    lines.push(`\n## Goals (${data.goals.length} total)`);
+    data.goals.forEach((g) => {
+      lines.push(`- ${g.title} (${g.category}): ${g.currentValue} → ${g.targetValue}, ${g.progress}% complete, deadline: ${g.deadline}`);
+    });
   }
 
-  if (q.includes('spike') || q.includes('position') || q.includes('narrative')) {
-    const categories = data.projects.map(p => p.category);
-    const mostCommon = categories.sort((a, b) => categories.filter(v => v === b).length - categories.filter(v => v === a).length)[0];
-    if (mostCommon) {
-      parts.push(`### Your Spike\n`);
-      parts.push(`Based on your projects, your strongest area appears to be **${mostCommon}**. MIT loves applicants who show deep, genuine passion in a specific area.`);
-      parts.push("\n**Suggestions:**");
-      parts.push("- Deepen your impact in this area with research or competitions");
-      parts.push("- Connect your projects into a narrative arc");
-      parts.push("- Show how your work has evolved and grown in complexity");
-    }
+  if (data.essays.length > 0) {
+    lines.push(`\n## Essays (${data.essays.length} total)`);
+    data.essays.forEach((e) => {
+      lines.push(`- "${e.title}" (${e.status}, ${e.wordCount} words)`);
+    });
   }
 
-  if (parts.length <= 1) {
-    parts.push("I can help you analyze your profile for MIT admissions. Try asking me:");
-    parts.push("- \"What should I improve most for MIT?\"");
-    parts.push("- \"Is my profile competitive?\"");
-    parts.push("- \"What kind of spike do I have?\"");
-    parts.push("- \"How can I strengthen my application?\"");
-  }
-
-  parts.push("\n---\n*💡 Connect Lovable Cloud for personalized AI-powered advice using advanced language models.*");
-  return parts.join("\n\n");
+  return lines.join('\n');
 }
 
 const SUGGESTED_QUESTIONS = [
@@ -83,26 +79,115 @@ export default function AIAdvisor({ data }: Props) {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages]);
 
-  function send(text?: string) {
+  async function send(text?: string) {
     const msg = text || input.trim();
-    if (!msg) return;
+    if (!msg || isLoading) return;
     setInput('');
     const userMsg: Message = { role: 'user', content: msg };
-    setMessages(prev => [...prev, userMsg]);
+    const updatedMessages = [...messages, userMsg];
+    setMessages(updatedMessages);
     setIsLoading(true);
 
-    setTimeout(() => {
-      const response = generateLocalAdvice(data, msg);
-      setMessages(prev => [...prev, { role: 'assistant', content: response }]);
+    const profileContext = buildProfileContext(data);
+
+    try {
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-advisor`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({
+            messages: updatedMessages,
+            profileContext,
+          }),
+        }
+      );
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: "Request failed" }));
+        toast.error(err.error || "AI request failed");
+        setIsLoading(false);
+        return;
+      }
+
+      if (!resp.body) throw new Error("No response body");
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let textBuffer = "";
+      let assistantSoFar = "";
+      let streamDone = false;
+
+      const upsertAssistant = (content: string) => {
+        assistantSoFar = content;
+        setMessages(prev => {
+          const last = prev[prev.length - 1];
+          if (last?.role === "assistant") {
+            return prev.map((m, i) => i === prev.length - 1 ? { ...m, content } : m);
+          }
+          return [...prev, { role: "assistant", content }];
+        });
+      };
+
+      while (!streamDone) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        textBuffer += decoder.decode(value, { stream: true });
+
+        let newlineIndex: number;
+        while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
+          let line = textBuffer.slice(0, newlineIndex);
+          textBuffer = textBuffer.slice(newlineIndex + 1);
+
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (line.startsWith(":") || line.trim() === "") continue;
+          if (!line.startsWith("data: ")) continue;
+
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") { streamDone = true; break; }
+
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const delta = parsed.choices?.[0]?.delta?.content as string | undefined;
+            if (delta) upsertAssistant(assistantSoFar + delta);
+          } catch {
+            textBuffer = line + "\n" + textBuffer;
+            break;
+          }
+        }
+      }
+
+      // flush remaining
+      if (textBuffer.trim()) {
+        for (let raw of textBuffer.split("\n")) {
+          if (!raw) continue;
+          if (raw.endsWith("\r")) raw = raw.slice(0, -1);
+          if (!raw.startsWith("data: ")) continue;
+          const jsonStr = raw.slice(6).trim();
+          if (jsonStr === "[DONE]") continue;
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const delta = parsed.choices?.[0]?.delta?.content as string | undefined;
+            if (delta) upsertAssistant(assistantSoFar + delta);
+          } catch { /* ignore */ }
+        }
+      }
+    } catch (e) {
+      console.error("AI Advisor error:", e);
+      toast.error("Failed to get AI response. Please try again.");
+    } finally {
       setIsLoading(false);
-    }, 800);
+    }
   }
 
   return (
     <div className="max-w-3xl mx-auto h-[calc(100vh-7rem)] flex flex-col animate-fade-in">
       <div className="mb-4">
         <h1 className="text-2xl font-bold text-foreground">AI Profile Advisor</h1>
-        <p className="text-sm text-muted-foreground mt-1">Get strategic advice for your MIT application</p>
+        <p className="text-sm text-muted-foreground mt-1">Get strategic advice for your {data.profile.targetSchool} application — powered by AI</p>
       </div>
 
       <div className="glass-card flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -114,7 +199,7 @@ export default function AIAdvisor({ data }: Props) {
               </div>
               <div>
                 <p className="font-medium text-foreground text-sm">Ask me anything about your application</p>
-                <p className="text-xs text-muted-foreground mt-1">I'll analyze your profile and give strategic advice</p>
+                <p className="text-xs text-muted-foreground mt-1">I have access to your full profile, projects, goals, and essays</p>
               </div>
               <div className="flex flex-wrap justify-center gap-2 mt-2">
                 {SUGGESTED_QUESTIONS.map(q => (
@@ -146,7 +231,13 @@ export default function AIAdvisor({ data }: Props) {
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-surface text-foreground'
               }`}>
-                <div className="whitespace-pre-wrap">{m.content}</div>
+                {m.role === 'assistant' ? (
+                  <div className="prose prose-sm prose-invert max-w-none">
+                    <ReactMarkdown>{m.content}</ReactMarkdown>
+                  </div>
+                ) : (
+                  <div className="whitespace-pre-wrap">{m.content}</div>
+                )}
               </div>
               {m.role === 'user' && (
                 <div className="w-7 h-7 rounded-lg bg-secondary flex items-center justify-center shrink-0 mt-0.5">
@@ -155,7 +246,7 @@ export default function AIAdvisor({ data }: Props) {
               )}
             </motion.div>
           ))}
-          {isLoading && (
+          {isLoading && messages[messages.length - 1]?.role !== 'assistant' && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3">
               <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                 <Bot className="w-4 h-4 text-primary" />
@@ -176,7 +267,7 @@ export default function AIAdvisor({ data }: Props) {
             <Textarea
               value={input}
               onChange={e => setInput(e.target.value)}
-              placeholder="Ask about your MIT application..."
+              placeholder={`Ask about your ${data.profile.targetSchool} application...`}
               className="min-h-[40px] max-h-[120px] text-sm resize-none bg-surface"
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
             />
@@ -184,9 +275,6 @@ export default function AIAdvisor({ data }: Props) {
               <Send className="w-4 h-4" />
             </Button>
           </div>
-          <p className="text-[10px] text-muted-foreground mt-1.5 flex items-center gap-1">
-            <Lock className="w-2.5 h-2.5" /> Local analysis mode — connect Lovable Cloud for AI-powered advice
-          </p>
         </div>
       </div>
     </div>
