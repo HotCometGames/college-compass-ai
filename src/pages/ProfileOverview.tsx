@@ -82,9 +82,39 @@ function ScoreRing({ score }: { score: number }) {
   );
 }
 
-export default function ProfileOverview({ data, updateProfile }: Props) {
+export default function ProfileOverview({ data, updateProfile, onImportData }: Props) {
   const { score, strengths, weaknesses, missing } = computeReadiness(data);
   const p = data.profile;
+  const [showDataPanel, setShowDataPanel] = useState(false);
+  const [importText, setImportText] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  function handleExport() {
+    const json = JSON.stringify(data);
+    navigator.clipboard.writeText(json).then(() => {
+      setCopied(true);
+      toast.success("Data copied to clipboard!");
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {
+      toast.error("Failed to copy");
+    });
+  }
+
+  function handleImport() {
+    try {
+      const parsed = JSON.parse(importText);
+      if (parsed && typeof parsed === 'object' && parsed.profile) {
+        onImportData?.(parsed as AppData);
+        setImportText("");
+        setShowDataPanel(false);
+        toast.success("Data imported successfully!");
+      } else {
+        toast.error("Invalid data format");
+      }
+    } catch {
+      toast.error("Invalid JSON string");
+    }
+  }
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 animate-fade-in">
