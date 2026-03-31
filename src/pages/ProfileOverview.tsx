@@ -1,9 +1,13 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { TrendingUp, TrendingDown, AlertCircle, CheckCircle2, BookOpen, Trophy, FlaskConical, FolderKanban, Target, PenTool } from "lucide-react";
-import { AppData } from "@/lib/store";
+import { TrendingUp, TrendingDown, AlertCircle, CheckCircle2, BookOpen, Trophy, FlaskConical, FolderKanban, Target, PenTool, Download, Upload, Copy, Check } from "lucide-react";
+import { AppData, loadData, saveData } from "@/lib/store";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 import TagInput from "@/components/TagInput";
 
 interface Props {
