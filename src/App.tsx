@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { HashRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -15,12 +15,12 @@ import NotFound from "./pages/NotFound.tsx";
 const queryClient = new QueryClient();
 
 function DashboardRoutes() {
-  const { data, updateProfile, setProjects, setGoals, setEssays } = useAppData();
+  const { data, updateProfile, setProjects, setGoals, setEssays, importData } = useAppData();
 
   return (
     <DashboardLayout>
       <Routes>
-        <Route path="/" element={<ProfileOverview data={data} updateProfile={updateProfile} />} />
+        <Route path="/" element={<ProfileOverview data={data} updateProfile={updateProfile} onImportData={importData} />} />
         <Route path="/projects" element={<ProjectsManager projects={data.projects} setProjects={setProjects} />} />
         <Route path="/goals" element={<GoalsTracker goals={data.goals} setGoals={setGoals} />} />
         <Route path="/advisor" element={<AIAdvisor data={data} />} />
@@ -36,11 +36,11 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
+      <HashRouter>
         <Routes>
           <Route path="/*" element={<DashboardRoutes />} />
         </Routes>
-      </BrowserRouter>
+      </HashRouter>
     </TooltipProvider>
   </QueryClientProvider>
 );

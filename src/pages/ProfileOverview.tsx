@@ -1,14 +1,19 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { TrendingUp, TrendingDown, AlertCircle, CheckCircle2, BookOpen, Trophy, FlaskConical, FolderKanban, Target, PenTool } from "lucide-react";
-import { AppData } from "@/lib/store";
+import { TrendingUp, TrendingDown, AlertCircle, CheckCircle2, BookOpen, Trophy, FlaskConical, FolderKanban, Target, PenTool, Download, Upload, Copy, Check } from "lucide-react";
+import { AppData, loadData, saveData } from "@/lib/store";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 import TagInput from "@/components/TagInput";
 
 interface Props {
   data: AppData;
   updateProfile: (p: Partial<AppData["profile"]>) => void;
+  onImportData?: (data: AppData) => void;
 }
 
 function computeReadiness(data: AppData) {
@@ -77,16 +82,75 @@ function ScoreRing({ score }: { score: number }) {
   );
 }
 
-export default function ProfileOverview({ data, updateProfile }: Props) {
+export default function ProfileOverview({ data, updateProfile, onImportData }: Props) {
   const { score, strengths, weaknesses, missing } = computeReadiness(data);
   const p = data.profile;
+  const [showDataPanel, setShowDataPanel] = useState(false);
+  const [importText, setImportText] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  function handleExport() {
+    const json = JSON.stringify(data);
+    navigator.clipboard.writeText(json).then(() => {
+      setCopied(true);
+      toast.success("Data copied to clipboard!");
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {
+      toast.error("Failed to copy");
+    });
+  }
+
+  function handleImport() {
+    try {
+      const parsed = JSON.parse(importText);
+      if (parsed && typeof parsed === 'object' && parsed.profile) {
+        onImportData?.(parsed as AppData);
+        setImportText("");
+        setShowDataPanel(false);
+        toast.success("Data imported successfully!");
+      } else {
+        toast.error("Invalid data format");
+      }
+    } catch {
+      toast.error("Invalid JSON string");
+    }
+  }
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Profile Overview</h1>
-        <p className="text-sm text-muted-foreground mt-1">Your MIT application readiness at a glance</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Profile Overview</h1>
+          <p className="text-sm text-muted-foreground mt-1">Your MIT application readiness at a glance</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => setShowDataPanel(!showDataPanel)} className="gap-1.5">
+          <Download className="w-3.5 h-3.5" /> Save / Load
+        </Button>
       </div>
+
+      {showDataPanel && (
+        <motion.div className="glass-card p-5 space-y-4" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">Export — Copy your data as a string</Label>
+            <div className="flex gap-2">
+              <Input readOnly value={JSON.stringify(data)} className="h-9 text-xs bg-surface font-mono truncate" />
+              <Button size="sm" variant="outline" onClick={handleExport} className="h-9 shrink-0 gap-1.5">
+                {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                {copied ? "Copied" : "Copy"}
+              </Button>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">Import — Paste a data string to load</Label>
+            <div className="flex gap-2">
+              <Textarea value={importText} onChange={e => setImportText(e.target.value)} placeholder='Paste exported data string here...' className="text-xs bg-surface font-mono min-h-[60px]" />
+            </div>
+            <Button size="sm" onClick={handleImport} disabled={!importText.trim()} className="gap-1.5">
+              <Upload className="w-3.5 h-3.5" /> Import Data
+            </Button>
+          </div>
+        </motion.div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <motion.div className="glass-card p-6 flex flex-col items-center justify-center gap-3 md:row-span-2" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
