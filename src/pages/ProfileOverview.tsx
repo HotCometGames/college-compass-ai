@@ -158,8 +158,12 @@ export default function ProfileOverview({ data, updateProfile }: Props) {
             <Input type="number" min="1" max="36" value={p.actScore || ''} placeholder="e.g. 34" onChange={e => updateProfile({ actScore: parseInt(e.target.value) || null })} className="h-9 text-sm bg-surface" />
           </div>
           <div className="space-y-1.5 sm:col-span-2 lg:col-span-3">
-            <Label className="text-xs text-muted-foreground">AP / Advanced Classes (comma-separated)</Label>
-            <Input value={p.apClasses.join(', ')} placeholder="e.g. AP Calc BC, AP Physics C, AP CS A" onChange={e => updateProfile({ apClasses: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} className="h-9 text-sm bg-surface" />
+            <Label className="text-xs text-muted-foreground">AP / Advanced Classes</Label>
+            <TagInput
+              tags={p.apClasses}
+              onChange={apClasses => updateProfile({ apClasses })}
+              placeholder="e.g. AP Calc BC (5)"
+            />
           </div>
         </div>
       </motion.div>

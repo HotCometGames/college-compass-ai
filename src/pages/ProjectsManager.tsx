@@ -200,8 +200,12 @@ function ProjectForm({ project, onSave, onCancel }: { project: Project; onSave: 
         </div>
       </div>
       <div className="space-y-1.5">
-        <Label className="text-xs">Awards (comma-separated)</Label>
-        <Input value={p.awards.join(', ')} onChange={e => setP({ ...p, awards: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} className="h-9 text-sm" placeholder="e.g. 1st Place Hackathon, Published Paper" />
+        <Label className="text-xs">Awards</Label>
+        <TagInput
+          tags={p.awards}
+          onChange={awards => setP({ ...p, awards })}
+          placeholder="e.g. 1st Place Hackathon"
+        />
       </div>
       <div className="space-y-1.5">
         <Label className="text-xs">Key Metrics</Label>
