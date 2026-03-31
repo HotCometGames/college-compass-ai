@@ -15,12 +15,12 @@ import NotFound from "./pages/NotFound.tsx";
 const queryClient = new QueryClient();
 
 function DashboardRoutes() {
-  const { data, updateProfile, setProjects, setGoals, setEssays } = useAppData();
+  const { data, updateProfile, setProjects, setGoals, setEssays, importData } = useAppData();
 
   return (
     <DashboardLayout>
       <Routes>
-        <Route path="/" element={<ProfileOverview data={data} updateProfile={updateProfile} />} />
+        <Route path="/" element={<ProfileOverview data={data} updateProfile={updateProfile} onImportData={importData} />} />
         <Route path="/projects" element={<ProjectsManager projects={data.projects} setProjects={setProjects} />} />
         <Route path="/goals" element={<GoalsTracker goals={data.goals} setGoals={setGoals} />} />
         <Route path="/advisor" element={<AIAdvisor data={data} />} />

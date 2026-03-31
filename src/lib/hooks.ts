@@ -24,5 +24,9 @@ export function useAppData() {
     setData(prev => ({ ...prev, essays }));
   }, []);
 
-  return { data, updateProfile, setProjects, setGoals, setEssays };
+  const importData = useCallback((newData: AppData) => {
+    setData(newData);
+  }, []);
+
+  return { data, updateProfile, setProjects, setGoals, setEssays, importData };
 }
