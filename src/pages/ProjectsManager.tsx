@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import TagInput from "@/components/TagInput";
 
 const CATEGORIES = ['ai', 'hackathons', 'research', 'clubs', 'athletics', 'community', 'arts', 'other'] as const;
 const IMPACT_LEVELS = ['local', 'state', 'national', 'international'] as const;
