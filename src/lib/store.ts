@@ -14,7 +14,7 @@ export interface Project {
   id: string;
   title: string;
   description: string;
-  category: 'ai' | 'hackathons' | 'research' | 'clubs' | 'athletics' | 'community' | 'arts' | 'other';
+  category: 'ai' | 'hackathons' | 'research' | 'clubs' | 'athletics' | 'community' | 'arts' | 'passion project' | 'other';
   impactLevel: 'local' | 'state' | 'national' | 'international';
   awards: string[];
   metrics: string;

@@ -1,11 +1,10 @@
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Send, Bot, User, Sparkles } from "lucide-react";
+import { Send, Bot, User, Sparkles, Save, History, Trash2, MessageSquare } from "lucide-react";
 import { AppData } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import ReactMarkdown from "react-markdown";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 interface Message {
@@ -13,14 +12,33 @@ interface Message {
   content: string;
 }
 
+interface SavedConversation {
+  id: string;
+  title: string;
+  messages: Message[];
+  savedAt: string;
+}
+
 interface Props {
   data: AppData;
+}
+
+const STORAGE_KEY = 'admit-ai-saved-conversations';
+
+function loadConversations(): SavedConversation[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function saveConversations(convos: SavedConversation[]) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(convos));
 }
 
 function buildProfileContext(data: AppData): string {
   const p = data.profile;
   const lines: string[] = [];
-
   lines.push(`## Student Profile`);
   lines.push(`- Name: ${p.name || 'Not set'}`);
   lines.push(`- Target School: ${p.targetSchool}`);
@@ -73,11 +91,45 @@ export default function AIAdvisor({ data }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [savedConvos, setSavedConvos] = useState<SavedConversation[]>(loadConversations);
+  const [showHistory, setShowHistory] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages]);
+
+  function saveCurrentConversation() {
+    if (messages.length === 0) { toast.error("Nothing to save"); return; }
+    const firstUserMsg = messages.find(m => m.role === 'user');
+    const title = firstUserMsg ? firstUserMsg.content.slice(0, 60) + (firstUserMsg.content.length > 60 ? '...' : '') : 'Conversation';
+    const convo: SavedConversation = {
+      id: Date.now().toString(36),
+      title,
+      messages: [...messages],
+      savedAt: new Date().toISOString(),
+    };
+    const updated = [convo, ...savedConvos];
+    setSavedConvos(updated);
+    saveConversations(updated);
+    toast.success("Conversation saved!");
+  }
+
+  function loadConversation(convo: SavedConversation) {
+    setMessages(convo.messages);
+    setShowHistory(false);
+  }
+
+  function deleteConversation(id: string) {
+    const updated = savedConvos.filter(c => c.id !== id);
+    setSavedConvos(updated);
+    saveConversations(updated);
+  }
+
+  function newConversation() {
+    setMessages([]);
+    setInput('');
+  }
 
   async function send(text?: string) {
     const msg = text || input.trim();
@@ -99,10 +151,7 @@ export default function AIAdvisor({ data }: Props) {
             "Content-Type": "application/json",
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
-          body: JSON.stringify({
-            messages: updatedMessages,
-            profileContext,
-          }),
+          body: JSON.stringify({ messages: updatedMessages, profileContext }),
         }
       );
 
@@ -136,19 +185,15 @@ export default function AIAdvisor({ data }: Props) {
         const { done, value } = await reader.read();
         if (done) break;
         textBuffer += decoder.decode(value, { stream: true });
-
         let newlineIndex: number;
         while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
           let line = textBuffer.slice(0, newlineIndex);
           textBuffer = textBuffer.slice(newlineIndex + 1);
-
           if (line.endsWith("\r")) line = line.slice(0, -1);
           if (line.startsWith(":") || line.trim() === "") continue;
           if (!line.startsWith("data: ")) continue;
-
           const jsonStr = line.slice(6).trim();
           if (jsonStr === "[DONE]") { streamDone = true; break; }
-
           try {
             const parsed = JSON.parse(jsonStr);
             const delta = parsed.choices?.[0]?.delta?.content as string | undefined;
@@ -160,7 +205,6 @@ export default function AIAdvisor({ data }: Props) {
         }
       }
 
-      // flush remaining
       if (textBuffer.trim()) {
         for (let raw of textBuffer.split("\n")) {
           if (!raw) continue;
@@ -185,10 +229,41 @@ export default function AIAdvisor({ data }: Props) {
 
   return (
     <div className="max-w-3xl mx-auto h-[calc(100vh-7rem)] flex flex-col animate-fade-in">
-      <div className="mb-4">
-        <h1 className="text-2xl font-bold text-foreground">AI Profile Advisor</h1>
-        <p className="text-sm text-muted-foreground mt-1">Get strategic advice for your {data.profile.targetSchool} application — powered by AI</p>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">AI Profile Advisor</h1>
+          <p className="text-sm text-muted-foreground mt-1">Get strategic advice for your {data.profile.targetSchool} application</p>
+        </div>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={newConversation} className="gap-1.5">
+            <MessageSquare className="w-3.5 h-3.5" /> New
+          </Button>
+          <Button size="sm" variant="outline" onClick={saveCurrentConversation} className="gap-1.5" disabled={messages.length === 0}>
+            <Save className="w-3.5 h-3.5" /> Save
+          </Button>
+          <Button size="sm" variant={showHistory ? "default" : "outline"} onClick={() => setShowHistory(!showHistory)} className="gap-1.5">
+            <History className="w-3.5 h-3.5" /> History {savedConvos.length > 0 && `(${savedConvos.length})`}
+          </Button>
+        </div>
       </div>
+
+      {showHistory && (
+        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mb-4 glass-card p-4 space-y-2 max-h-60 overflow-auto">
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Saved Conversations</h3>
+          {savedConvos.length === 0 && <p className="text-xs text-muted-foreground">No saved conversations yet</p>}
+          {savedConvos.map(c => (
+            <div key={c.id} className="flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-surface-hover transition-colors">
+              <button onClick={() => loadConversation(c)} className="flex-1 text-left">
+                <p className="text-sm font-medium text-foreground truncate">{c.title}</p>
+                <p className="text-[10px] text-muted-foreground">{new Date(c.savedAt).toLocaleString()} · {c.messages.length} messages</p>
+              </button>
+              <button onClick={() => deleteConversation(c.id)} className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive">
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+        </motion.div>
+      )}
 
       <div className="glass-card flex-1 flex flex-col min-h-0 overflow-hidden">
         <div ref={scrollRef} className="flex-1 overflow-auto p-4 space-y-4">
@@ -203,11 +278,7 @@ export default function AIAdvisor({ data }: Props) {
               </div>
               <div className="flex flex-wrap justify-center gap-2 mt-2">
                 {SUGGESTED_QUESTIONS.map(q => (
-                  <button
-                    key={q}
-                    onClick={() => send(q)}
-                    className="px-3 py-1.5 text-xs rounded-lg bg-surface hover:bg-surface-hover text-muted-foreground hover:text-foreground border border-border/50 transition-colors"
-                  >
+                  <button key={q} onClick={() => send(q)} className="px-3 py-1.5 text-xs rounded-lg bg-surface hover:bg-surface-hover text-muted-foreground hover:text-foreground border border-border/50 transition-colors">
                     {q}
                   </button>
                 ))}
@@ -215,26 +286,15 @@ export default function AIAdvisor({ data }: Props) {
             </div>
           )}
           {messages.map((m, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`flex gap-3 ${m.role === 'user' ? 'justify-end' : ''}`}
-            >
+            <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className={`flex gap-3 ${m.role === 'user' ? 'justify-end' : ''}`}>
               {m.role === 'assistant' && (
                 <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
                   <Bot className="w-4 h-4 text-primary" />
                 </div>
               )}
-              <div className={`max-w-[85%] rounded-xl px-4 py-3 text-sm leading-relaxed ${
-                m.role === 'user'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-surface text-foreground'
-              }`}>
+              <div className={`max-w-[85%] rounded-xl px-4 py-3 text-sm leading-relaxed ${m.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-surface text-foreground'}`}>
                 {m.role === 'assistant' ? (
-                  <div className="prose prose-sm prose-invert max-w-none">
-                    <ReactMarkdown>{m.content}</ReactMarkdown>
-                  </div>
+                  <div className="prose prose-sm prose-invert max-w-none"><ReactMarkdown>{m.content}</ReactMarkdown></div>
                 ) : (
                   <div className="whitespace-pre-wrap">{m.content}</div>
                 )}
