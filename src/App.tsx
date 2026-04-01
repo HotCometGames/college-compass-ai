@@ -26,6 +26,7 @@ function DashboardRoutes() {
         <Route path="/goals" element={<GoalsTracker goals={data.goals} setGoals={setGoals} />} />
         <Route path="/advisor" element={<AIAdvisor data={data} />} />
         <Route path="/essays" element={<EssayHelper essays={data.essays} setEssays={setEssays} />} />
+        <Route path="/todos" element={<TodoList />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </DashboardLayout>
