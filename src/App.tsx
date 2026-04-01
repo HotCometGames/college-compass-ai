@@ -10,6 +10,7 @@ import ProjectsManager from "@/pages/ProjectsManager";
 import GoalsTracker from "@/pages/GoalsTracker";
 import AIAdvisor from "@/pages/AIAdvisor";
 import EssayHelper from "@/pages/EssayHelper";
+import TodoList from "@/pages/TodoList";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -25,6 +26,7 @@ function DashboardRoutes() {
         <Route path="/goals" element={<GoalsTracker goals={data.goals} setGoals={setGoals} />} />
         <Route path="/advisor" element={<AIAdvisor data={data} />} />
         <Route path="/essays" element={<EssayHelper essays={data.essays} setEssays={setEssays} />} />
+        <Route path="/todos" element={<TodoList />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </DashboardLayout>

@@ -5,6 +5,7 @@ import {
   Bot,
   PenTool,
   GraduationCap,
+  ListChecks,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -25,6 +26,7 @@ const navItems = [
   { title: "Goals & Gaps", url: "/goals", icon: Target },
   { title: "AI Advisor", url: "/advisor", icon: Bot },
   { title: "Essay Helper", url: "/essays", icon: PenTool },
+  { title: "To-Do List", url: "/todos", icon: ListChecks },
 ];
 
 export function AppSidebar() {
