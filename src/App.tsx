@@ -10,6 +10,7 @@ import ProjectsManager from "@/pages/ProjectsManager";
 import GoalsTracker from "@/pages/GoalsTracker";
 import AIAdvisor from "@/pages/AIAdvisor";
 import EssayHelper from "@/pages/EssayHelper";
+import TodoList from "@/pages/TodoList";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
