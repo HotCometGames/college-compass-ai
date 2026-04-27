@@ -32,5 +32,5 @@ export function useAppData() {
     setData(newData);
   }, []);
 
-  return { data, updateProfile, setProjects, setGoals, setEssays, importData };
+  return { data, updateProfile, setProjects, setGoals, setEssays, setColleges, importData };
 }
