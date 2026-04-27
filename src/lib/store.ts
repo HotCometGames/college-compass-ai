@@ -74,6 +74,7 @@ const DEFAULT_DATA: AppData = {
   projects: [],
   goals: [],
   essays: [],
+  colleges: [],
 };
 
 const STORAGE_KEY = 'admit-ai-data';
