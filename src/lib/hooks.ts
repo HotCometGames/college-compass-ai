@@ -24,9 +24,13 @@ export function useAppData() {
     setData(prev => ({ ...prev, essays }));
   }, []);
 
+  const setColleges = useCallback((colleges: AppData['colleges']) => {
+    setData(prev => ({ ...prev, colleges }));
+  }, []);
+
   const importData = useCallback((newData: AppData) => {
     setData(newData);
   }, []);
 
-  return { data, updateProfile, setProjects, setGoals, setEssays, importData };
+  return { data, updateProfile, setProjects, setGoals, setEssays, setColleges, importData };
 }

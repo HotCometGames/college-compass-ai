@@ -44,11 +44,21 @@ export interface Essay {
   status: 'draft' | 'reviewing' | 'final';
 }
 
+export interface College {
+  id: string;
+  name: string;
+  location: string;
+  tier: 'reach' | 'target' | 'safety';
+  notes: string;
+  applicationDeadline: string;
+}
+
 export interface AppData {
   profile: StudentProfile;
   projects: Project[];
   goals: Goal[];
   essays: Essay[];
+  colleges: College[];
 }
 
 const DEFAULT_DATA: AppData = {
@@ -64,6 +74,7 @@ const DEFAULT_DATA: AppData = {
   projects: [],
   goals: [],
   essays: [],
+  colleges: [],
 };
 
 const STORAGE_KEY = 'admit-ai-data';
