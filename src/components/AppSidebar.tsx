@@ -6,6 +6,7 @@ import {
   PenTool,
   GraduationCap,
   ListChecks,
+  School,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -24,6 +25,7 @@ const navItems = [
   { title: "Profile Overview", url: "/", icon: BarChart3 },
   { title: "Projects & Activities", url: "/projects", icon: FolderKanban },
   { title: "Goals & Gaps", url: "/goals", icon: Target },
+  { title: "College List", url: "/colleges", icon: School },
   { title: "AI Advisor", url: "/advisor", icon: Bot },
   { title: "Essay Helper", url: "/essays", icon: PenTool },
   { title: "To-Do List", url: "/todos", icon: ListChecks },

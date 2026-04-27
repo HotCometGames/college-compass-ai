@@ -11,12 +11,13 @@ import GoalsTracker from "@/pages/GoalsTracker";
 import AIAdvisor from "@/pages/AIAdvisor";
 import EssayHelper from "@/pages/EssayHelper";
 import TodoList from "@/pages/TodoList";
+import CollegeList from "@/pages/CollegeList";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
 
 function DashboardRoutes() {
-  const { data, updateProfile, setProjects, setGoals, setEssays, importData } = useAppData();
+  const { data, updateProfile, setProjects, setGoals, setEssays, setColleges, importData } = useAppData();
 
   return (
     <DashboardLayout>
@@ -27,6 +28,7 @@ function DashboardRoutes() {
         <Route path="/advisor" element={<AIAdvisor data={data} />} />
         <Route path="/essays" element={<EssayHelper essays={data.essays} setEssays={setEssays} />} />
         <Route path="/todos" element={<TodoList />} />
+        <Route path="/colleges" element={<CollegeList data={data} setColleges={setColleges} updateProfile={updateProfile} />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </DashboardLayout>
