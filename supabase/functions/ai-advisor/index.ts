@@ -6,13 +6,44 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+type ChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+function jsonResponse(body: unknown, status: number) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+function isValidMessage(message: unknown): message is ChatMessage {
+  return typeof message === "object" && message !== null &&
+    (message as ChatMessage).role !== undefined &&
+    ["user", "assistant"].includes((message as ChatMessage).role) &&
+    typeof (message as ChatMessage).content === "string";
+}
+
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405);
 
   try {
-    const { messages, profileContext } = await req.json();
+    const body = await req.json().catch(() => null);
+    const messages = body?.messages;
+    const profileContext = body?.profileContext;
+
+    if (!Array.isArray(messages) || !messages.every(isValidMessage)) {
+      return jsonResponse({ error: "Invalid chat messages" }, 400);
+    }
+
+    if (typeof profileContext !== "string") {
+      return jsonResponse({ error: "Invalid profile context" }, 400);
+    }
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    if (!LOVABLE_API_KEY) return jsonResponse({ error: "AI is not configured for this project yet." }, 500);
 
     const systemPrompt = `You are an expert college admissions advisor specializing in highly selective schools, especially MIT. You have deep knowledge of what top universities look for in applicants.
 
@@ -25,7 +56,8 @@ Use this data to give highly specific, personalized, and actionable advice. Refe
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Lovable-API-Key": LOVABLE_API_KEY,
+        "X-Lovable-AIG-SDK": "vercel-ai-sdk",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -40,20 +72,14 @@ Use this data to give highly specific, personalized, and actionable advice. Refe
 
     if (!response.ok) {
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limited. Please try again in a moment." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return jsonResponse({ error: "Rate limited. Please try again in a moment." }, 429);
       }
       if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add funds in Settings → Workspace → Usage." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return jsonResponse({ error: "AI credits exhausted. Please add credits in Settings → Workspace → Usage." }, 402);
       }
       const t = await response.text();
       console.error("AI gateway error:", response.status, t);
-      return new Response(JSON.stringify({ error: "AI gateway error" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ error: `AI gateway error (${response.status}). Please try again.` }, 500);
     }
 
     return new Response(response.body, {
@@ -61,8 +87,6 @@ Use this data to give highly specific, personalized, and actionable advice. Refe
     });
   } catch (e) {
     console.error("ai-advisor error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: e instanceof Error ? e.message : "Unknown error" }, 500);
   }
 });
