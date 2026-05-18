@@ -157,7 +157,7 @@ export default function AIAdvisor({ data }: Props) {
 
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({ error: "Request failed" }));
-        toast.error(err.error || "AI request failed");
+        toast.error(err.error || "AI request failed. Please try again.");
         setIsLoading(false);
         return;
       }
@@ -221,7 +221,7 @@ export default function AIAdvisor({ data }: Props) {
       }
     } catch (e) {
       console.error("AI Advisor error:", e);
-      toast.error("Failed to get AI response. Please try again.");
+      toast.error("AI backend is unavailable right now. Check that Lovable Cloud is active, then try again.");
     } finally {
       setIsLoading(false);
     }
